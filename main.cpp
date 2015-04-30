@@ -90,13 +90,16 @@ struct INSTR
 
 	int r1,r2,r3;
 
-	INSTR(){
+	int FalseNode;
+
+	INSTR(int f = 0){
 		addr = -1;
 		FVal = -1;
 		RegSrc2 = "R16";
 		RegSrc1 = "R16";
 		RegDest = "R16";
 		cycleDone = 0;
+		FalseNode = f;
 	}
 
 	void setRegSrc2(string s){
@@ -188,7 +191,17 @@ struct INSTR
 	}
 };
 
-vector<int> FPAdder(ADDER_UNIT,-1) , FPMultiplier(MULTIPLIER_UNIT,-1) , IntegerUnit(CONSTANT_UNIT,-1);
+INSTR FalseINSTR(-1);
+
+bool operator==(INSTR a , INSTR b){
+	return a.FalseNode == b.FalseNode;
+}
+
+bool operator!=(INSTR a , INSTR b){
+	return a.FalseNode != b.FalseNode;
+}
+
+vector<INSTR> FPAdder(ADDER_UNIT,FalseINSTR) , FPMultiplier(MULTIPLIER_UNIT,FalseINSTR) , IntegerUnit(CONSTANT_UNIT,FalseINSTR);
 int num_FPAdder = 0 , num_FPMultiplier = 0 , Num_IU = 0;
 
 
@@ -320,26 +333,26 @@ bool ProcessBranch(string s,int b){
 bool is_branch=false;
 
 bool ProcessQueue(){
-	cout<<Curline<<" "<<Reg[0].val<<" , "<<Reg[1].val<<endl;	
+	cout<<Curline<<" "<<Reg[7].val<<" , "<<Reg[1].val<<endl;	
 
 	for (int i = 0; i < ADDER_UNIT; ++i)
 	{
-		if(FPAdder[i]!=-1){
-			int C = Cost(ins[FPAdder[i]].ins);
-			if(C > ins[FPAdder[i]].cycleDone) ins[FPAdder[i]].cycleDone++;
+		if(FPAdder[i]!=FalseINSTR){
+			int C = Cost(FPAdder[i].ins);
+			if(C > FPAdder[i].cycleDone) FPAdder[i].cycleDone++;
 			else{
-				if(rob[ins[FPAdder[i]].r2].hasVal && rob[ins[FPAdder[i]].r3].hasVal){
+				if(rob[FPAdder[i].r2].hasVal && rob[FPAdder[i].r3].hasVal){
 					
-					rob[ins[FPAdder[i]].r1].val = process(ins[FPAdder[i]].ins,rob[ins[FPAdder[i]].r2].val , rob[ins[FPAdder[i]].r3].val);
-					rob[ins[FPAdder[i]].r1].hasVal = 1;
-					int R = rob[ins[FPAdder[i]].r1].Register;
+					rob[FPAdder[i].r1].val = process(FPAdder[i].ins,rob[FPAdder[i].r2].val , rob[FPAdder[i].r3].val);
+					rob[FPAdder[i].r1].hasVal = 1;
+					int R = rob[FPAdder[i].r1].Register;
 					
-					if( Reg[R].rob_no == ins[FPAdder[i]].r1 && R!=16){
-						Reg[R].val = rob[ins[FPAdder[i]].r1].val;
+					if( Reg[R].rob_no == FPAdder[i].r1 && R!=16){
+						Reg[R].val = rob[FPAdder[i].r1].val;
 						Reg[R].hasVal = 1;
 					}
-					ins[FPAdder[i]].cycleDone = 0;
-					FPAdder[i] = -1;	
+					FPAdder[i].cycleDone = 0;
+					FPAdder[i] = FalseINSTR;	
 				}
 			}
 		}
@@ -347,74 +360,75 @@ bool ProcessQueue(){
 
 	for (int i = 0; i < MULTIPLIER_UNIT; ++i)
 	{
-		if(FPMultiplier[i]!=-1){
-			int C = Cost(ins[FPMultiplier[i]].ins);
-			if(C > ins[FPMultiplier[i]].cycleDone) ins[FPMultiplier[i]].cycleDone++;
+		if(FPMultiplier[i]!=FalseINSTR){
+			int C = Cost(FPMultiplier[i].ins);
+			if(C > FPMultiplier[i].cycleDone) FPMultiplier[i].cycleDone++;
 			else{
-				if(rob[ins[FPMultiplier[i]].r2].hasVal && rob[ins[FPMultiplier[i]].r3].hasVal){
+				if(rob[FPMultiplier[i].r2].hasVal && rob[FPMultiplier[i].r3].hasVal){
 					
-					rob[ins[FPMultiplier[i]].r1].val = process(ins[FPMultiplier[i]].ins,rob[ins[FPMultiplier[i]].r2].val , rob[ins[FPMultiplier[i]].r3].val);
-					rob[ins[FPMultiplier[i]].r1].hasVal = 1;
-					int R = rob[ins[FPMultiplier[i]].r1].Register;
+					rob[FPMultiplier[i].r1].val = process(FPMultiplier[i].ins,rob[FPMultiplier[i].r2].val , rob[FPMultiplier[i].r3].val);
+					rob[FPMultiplier[i].r1].hasVal = 1;
+					int R = rob[FPMultiplier[i].r1].Register;
 					
-					if( Reg[R].rob_no == ins[FPMultiplier[i]].r1 && R!=16){
-						Reg[R].val = rob[ins[FPMultiplier[i]].r1].val;
+					if( Reg[R].rob_no == FPMultiplier[i].r1 && R!=16){
+						Reg[R].val = rob[FPMultiplier[i].r1].val;
 						Reg[R].hasVal = 1;
 					}
-					ins[FPMultiplier[i]].cycleDone = 0;
-					FPMultiplier[i] = -1;	
+					FPMultiplier[i].cycleDone = 0;
+					FPMultiplier[i] = FalseINSTR;	
 				}
 			}
 		}
 	}
 	for (int i = 0; i < CONSTANT_UNIT; ++i)
 	{
-		if(IntegerUnit[i]!=-1){
-			int C = Cost(ins[IntegerUnit[i]].ins);
-			if(C > ins[IntegerUnit[i]].cycleDone) ins[IntegerUnit[i]].cycleDone++;
+		if(IntegerUnit[i]!=FalseINSTR){
+			int C = Cost(IntegerUnit[i].ins);
+			if(C > IntegerUnit[i].cycleDone) IntegerUnit[i].cycleDone++;
 			else{
-				if(ins[IntegerUnit[i]].ins=="HALT"){
-					IntegerUnit[i] = -1;
+				if(IntegerUnit[i].ins=="HALT"){
+					IntegerUnit[i] = FalseINSTR;
 				}
-				else if(ins[IntegerUnit[i]].ins=="MOV" || ins[IntegerUnit[i]].ins=="LOAD"){
-					if(rob[ins[IntegerUnit[i]].r3].hasVal){
-						rob[ins[IntegerUnit[i]].r1].val = process(ins[IntegerUnit[i]].ins,0.0,rob[ins[IntegerUnit[i]].r3].val);
-						rob[ins[IntegerUnit[i]].r1].hasVal = 1;
-						int R = rob[ins[IntegerUnit[i]].r1].Register;
-						if( Reg[R].rob_no == ins[IntegerUnit[i]].r1 && R!=16){
-							Reg[R].val = rob[ins[IntegerUnit[i]].r1].val;
+				else if(IntegerUnit[i].ins=="MOV" || IntegerUnit[i].ins=="LOAD"){
+					if(rob[IntegerUnit[i].r3].hasVal){
+						rob[IntegerUnit[i].r1].val = process(IntegerUnit[i].ins,0.0,rob[IntegerUnit[i].r3].val);
+						rob[IntegerUnit[i].r1].hasVal = 1;
+						int R = rob[IntegerUnit[i].r1].Register;
+						if( Reg[R].rob_no == IntegerUnit[i].r1 && R!=16){
+							Reg[R].val = rob[IntegerUnit[i].r1].val;
 							Reg[R].hasVal = 1;
 						}
 
-						ins[IntegerUnit[i]].cycleDone = 0;
-						IntegerUnit[i] = -1;
+						IntegerUnit[i].cycleDone = 0;
+						IntegerUnit[i] = FalseINSTR;
 					}
 				}
-				else if(ins[IntegerUnit[i]].ins=="STR"){
-					if(rob[ins[IntegerUnit[i]].r3].hasVal && rob[ins[IntegerUnit[i]].r2].hasVal){
-						MEMORY.save(rob[ins[IntegerUnit[i]].r3].val,rob[ins[IntegerUnit[i]].r2].val);
-						cout<<"Saved "<<rob[ins[IntegerUnit[i]].r2].val<<" at "<<rob[ins[IntegerUnit[i]].r3].val<<endl;
+				else if(IntegerUnit[i].ins=="STR"){
+					if(rob[IntegerUnit[i].r3].hasVal && rob[IntegerUnit[i].r2].hasVal){
+						MEMORY.save(rob[IntegerUnit[i].r3].val,rob[IntegerUnit[i].r2].val);
+						cout<<"Saved "<<rob[IntegerUnit[i].r2].val<<" at "<<rob[IntegerUnit[i].r3].val<<endl;
 
-						ins[IntegerUnit[i]].cycleDone = 0;
-						IntegerUnit[i] = -1;
+						IntegerUnit[i].cycleDone = 0;
+						IntegerUnit[i] = FalseINSTR;
 					}
 				}
-				else if(ins[IntegerUnit[i]].ins=="BR"){
-					if(rob[ins[IntegerUnit[i]].r3].hasVal){
-						Curline+= rob[ins[IntegerUnit[i]].r3].val;
-						ins[IntegerUnit[i]].cycleDone = 0;
-						IntegerUnit[i] = -1;
+				else if(IntegerUnit[i].ins=="BR"){
+					if(rob[IntegerUnit[i].r3].hasVal){
+						Curline+= rob[IntegerUnit[i].r3].val;
+						IntegerUnit[i].cycleDone = 0;
+						IntegerUnit[i] = FalseINSTR;
 						is_branch = false;
 					}
 				}
 				else{
-					if(rob[ins[IntegerUnit[i]].r3].hasVal && rob[ins[IntegerUnit[i]].r2].hasVal){
-						bool b = ProcessBranch(ins[IntegerUnit[i]].ins,rob[ins[IntegerUnit[i]].r2].val);
+					if(rob[IntegerUnit[i].r3].hasVal && rob[IntegerUnit[i].r2].hasVal){
+						cout<<rob[IntegerUnit[i].r2].val<< " * ";
+						bool b = ProcessBranch(IntegerUnit[i].ins,rob[IntegerUnit[i].r2].val);
 						if(b){
-							Curline+=rob[ins[IntegerUnit[i]].r3].val;
+							Curline+=rob[IntegerUnit[i].r3].val;
 						}
-						ins[IntegerUnit[i]].cycleDone = 0;
-						IntegerUnit[i] = -1;
+						IntegerUnit[i].cycleDone = 0;
+						IntegerUnit[i] = FalseINSTR;
 						is_branch = false;
 					}
 				}
@@ -423,8 +437,10 @@ bool ProcessQueue(){
 			}
 		}
 	}
-	if(is_branch)
+	if(is_branch){
+		cout<<"Yoyo\n";
 		return true;
+	}
 	/*
 	for (int i = 1; i < 3; ++i)
 	{
@@ -436,15 +452,16 @@ bool ProcessQueue(){
 	}*/
 	
 	if(Curline >= numlines){
+		cout<<"all hail lord\n";
 		bool test = false;
 		for (int i = 0; i < ADDER_UNIT; ++i)
-			if(FPAdder[i]!=-1) {test = true; }
+			if(FPAdder[i]!=FalseINSTR) {test = true; }
 
 		for (int i = 0; i < MULTIPLIER_UNIT; ++i)
-			if(FPMultiplier[i]!=-1) {test = true;}
+			if(FPMultiplier[i]!=FalseINSTR) {test = true;}
 
 		for (int i = 0; i < CONSTANT_UNIT; ++i)
-			if(IntegerUnit[i]!=-1) {test = true;}
+			if(IntegerUnit[i]!=FalseINSTR) {test = true;}
 
 		return test;
 	}
@@ -459,9 +476,9 @@ bool ProcessQueue(){
 	if(next.UnitType == 1){
 		for (int i = 0; i < ADDER_UNIT; ++i)
 		{
-			if(FPAdder[i]==-1){
+			if(FPAdder[i]==FalseINSTR){
 				CreateROBs();
-				FPAdder[i] = Curline;
+				FPAdder[i] = ins[Curline];
 				flag = true;
 
 				break;
@@ -472,9 +489,9 @@ bool ProcessQueue(){
 	else if(next.UnitType == 2){
 		for (int i = 0; i < MULTIPLIER_UNIT; ++i)
 		{
-			if(FPMultiplier[i]==-1){
+			if(FPMultiplier[i]==FalseINSTR){
 				CreateROBs();
-				FPMultiplier[i] = Curline;
+				FPMultiplier[i] = ins[Curline];
 				flag = true;
 				break;
 			}
@@ -485,10 +502,10 @@ bool ProcessQueue(){
 	{
 		for (int i = 0; i < CONSTANT_UNIT; ++i)
 		{
-			if(IntegerUnit[i]==-1){
+			if(IntegerUnit[i]==FalseINSTR){
 				if(ins[Curline].ins[0]=='B') is_branch = true;
 				CreateROBs();
-				IntegerUnit[i] = Curline;
+				IntegerUnit[i] = ins[Curline];
 				flag = true;
 				break;
 			}
