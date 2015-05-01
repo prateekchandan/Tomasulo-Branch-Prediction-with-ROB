@@ -1,0 +1,24 @@
+--This code computes ln(1+x)
+16					--15 lines of code
+--initialize registers
+MOV		R0,#0.32			--initialize x,change this value to try others
+MOV		R1,#1.0				--initialize x^(k+1) to 1
+MOV 		R2,#0.0				--initialize k+1
+MOV	 	R3,#0.0				--initialize result
+MOV		R4,#-1.0				--initialize multiply factor to -1.0
+MOV		R7,#10				--initialize loop iterator
+--iteration
+FPMULT		R1,R1,R0
+FPADD		R2,R2,#1.0
+FPMULT		R4,R4,#-1.0
+FPDIV		R5,R4,R2
+FPMULT		R5,R5,R1
+FPADD		R3,R3,R5
+SUB		R7,R7,#1
+BNEZ		R7,#-8
+--
+ADD R0,R0,#0
+HALT
+--
+--memory contents
+0					--no memory contents defined

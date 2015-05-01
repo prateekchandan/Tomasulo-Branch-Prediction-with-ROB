@@ -1,0 +1,44 @@
+-- This code computes DAXPY for 10 iterations
+14					--14 lines of code
+--initialize registers
+LOAD		R0,#5			-- load scalar value,a = 5
+LOAD		R1,0			-- location of x
+LOAD		R2,10			-- location of y
+LOAD		R3,#10			-- number of iterations
+--
+LOAD		R5,R1			-- load x
+LOAD		R6,R2			-- load y
+FPMULT		R5,R5,R0		-- a*X
+FPADD		R6,R5,R6		-- a*X + Y
+STR		R6,R2			-- store result in location found in R2
+ADD		R1,R1,#1		-- increment X index
+ADD		R2,R2,#1		-- increment Y index
+FPADD		R3,R3,#-1		-- decrement iterator
+BNEZ		R3,#-9			-- loop if not zero
+--
+HALT
+--
+--memory contents
+20
+--X vector
+<0> <10.0>
+<1> <11.0>
+<2> <12.0>
+<3> <13.0>
+<4> <14.0>
+<5> <15.0>
+<6> <16.0>
+<7> <17.0>
+<8> <18.0>
+<9> <19.0>
+--Y vector
+<10> <20.0>
+<11> <21.0>
+<12> <22.0>
+<13> <23.0>
+<14> <24.0>
+<15> <25.0>
+<16> <26.0>
+<17> <27.0>
+<18> <28.0>
+<19> <29.0>

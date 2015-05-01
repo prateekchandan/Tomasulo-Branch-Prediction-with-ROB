@@ -8,7 +8,7 @@
 #include <string.h>
 
 // CHANGE THE BRANCH PREDICTION TYPE HERE
-#define BRANCH_PREDICTION_TYPE 1
+#define BRANCH_PREDICTION_TYPE 2
 
 #define ADDER_UNIT 3
 #define MULTIPLIER_UNIT 2
@@ -308,7 +308,7 @@ pair<int,int> BrancPrediction(int type,string btype,int stage,int actual_taken,i
 			return pair<int,int>(prediction_state,0);
 		}
 		else{
-			if (actual_taken= prediction_state) 
+			if (actual_taken== prediction_state) 
 		  	{
 		    	if(prediction_count==0 && prediction_state==0)
 		       	{
@@ -813,7 +813,9 @@ int main(int argc, char  *argv[])
 
 	// Initialize Registers
 
-	BTF.loadFromFile(argv[1]);
+	if(BRANCH_PREDICTION_TYPE == 1)
+		BTF.loadFromFile(argv[1]);
+	
 	for (int i = 0; i < NUM_REGISTERS; ++i)
 	{
 		stringstream ss;
@@ -914,6 +916,7 @@ int main(int argc, char  *argv[])
 		cout<<"Misprediction Rate = "<<((double)(totalBranch-BranchPre)*100.0)/(double)totalBranch<<endl;
 	
 	
-	BTF.saveToFile(argv[1]);
+	if(BRANCH_PREDICTION_TYPE == 1)
+		BTF.saveToFile(argv[1]);
 	return 0;
 }

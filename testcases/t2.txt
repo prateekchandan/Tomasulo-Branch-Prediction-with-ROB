@@ -1,0 +1,80 @@
+--Test Code 1
+--
+--The code computes:
+--	for i = 0 to 9
+--		a[i] = (b[i] * c[i])/d[i]
+--
+--Memory map:
+--a is located in memory 0-9
+--b in memory 10-19
+--c in memory 20-29,
+--d in memory 30-39
+--
+18					--18 lines of code
+--
+--initialize array addresses
+LOAD		R1,0		--a
+LOAD		R2,10		--b
+LOAD		R3,20		--c
+LOAD		R4,30		--d
+--
+--initialize iterator
+LOAD		R0,#10	--initialized to 10 so first decrement to 9
+--
+--iteration
+
+--decrement iterator
+SUB		R0,R0,#1
+LOAD		R5,R2			--get b[i]
+LOAD		R6,R3			--get c[i]
+LOAD		R7,R4			--get d[i]
+FPMULT		R8,R5,R6
+FPDIV		R8,R8,R7
+STR		R8,R1
+--increment array pointers
+ADD		R1,R1,#1
+ADD		R2,R2,#1
+ADD		R3,R3,#1
+ADD		R4,R4,#1
+BGT		R0,#-12
+--
+HALT
+--
+--
+--memory contents
+30
+--b contents
+<10> <10.0>
+<11> <11.0>
+<12> <12.0>
+<13> <13.0>
+<14> <14.0>
+<15> <15.0>
+<16> <16.0>
+<17> <17.0>
+<18> <18.0>
+<19> <19.0>
+--c contents
+<20> <20.0>
+<21> <21.0>
+<22> <22.0>
+<23> <23.0>
+<24> <24.0>
+<25> <25.0>
+<26> <26.0>
+<27> <27.0>
+<28> <28.0>
+<29> <29.0>
+--d contents
+<30> <10.0>
+<31> <11.0>
+<32> <12.0>
+<33> <13.0>
+<34> <14.0>
+<35> <15.0>
+<36> <16.0>
+<37> <17.0>
+<38> <18.0>
+<39> <19.0>
+
+
