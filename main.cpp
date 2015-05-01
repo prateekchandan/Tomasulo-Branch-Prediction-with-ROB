@@ -6,6 +6,9 @@
 #include <utility>
 #include <map>
 
+// CHANGE THE BRANCH PREDICTION TYPE HERE
+#define BRANCH_PREDICTION_TYPE 1
+
 #define ADDER_UNIT 3
 #define MULTIPLIER_UNIT 2
 #define CONSTANT_UNIT 1
@@ -13,10 +16,15 @@
 #define MEMORY_SIZE 100000
 using namespace std;
 
+// The Memory structure which does the loading from memory and stroing to memory
 struct Memory{
 	vector<float> MEMORY;
 	Memory(){
 		MEMORY.resize(MEMORY_SIZE);
+		for (int i = 0; i < MEMORY.size(); ++i)
+		{
+			MEMORY[i]=10;
+		}
 	}
 
 	void save(int f,float val){
@@ -36,6 +44,7 @@ struct Memory{
 
 } MEMORY;
 
+// The ROB structure 
 struct ROB{
 	int Register;
 	float val;
@@ -46,9 +55,11 @@ struct ROB{
 	}
 };
 
+// Array of ROB and total Number of defined ROB's
 vector<ROB> rob;
 int numROB;
 
+// Register Structure
 struct Register{
 	string name;
 	float val;
@@ -62,8 +73,10 @@ struct Register{
 	}
 };
 
+// Array of registers 
 vector<Register> Reg(NUM_REGISTERS);
 
+// To break the string by delimeter
 vector<string> explode(string const & s, char delim)
 {
     vector<string> result;
@@ -77,6 +90,7 @@ vector<string> explode(string const & s, char delim)
     return result;
 }
 
+// The Instruction Structure
 struct INSTR
 {
 	string ins,reg;
@@ -102,6 +116,7 @@ struct INSTR
 		FalseNode = f;
 	}
 
+	// Sets value of Src2
 	void setRegSrc2(string s){
 		stringstream sstr;
 
@@ -122,6 +137,7 @@ struct INSTR
 		}
 	}
 
+	// Parse the input to fill all the entries
 	void ParseReg(){
 		vector<string> reglist = explode(reg,',');
 		if(ins == "HALT");
@@ -190,7 +206,7 @@ struct INSTR
 		cout<<ins<<" : "<<RegDest<<" : "<<RegSrc1<<" : "<<RegSrc2<< " : "<<addr<<" : "<<FVal<<" : "<<UnitType<<endl;
 	}
 };
-
+// A false instruction
 INSTR FalseINSTR(-1);
 
 bool operator==(INSTR a , INSTR b){
@@ -201,8 +217,73 @@ bool operator!=(INSTR a , INSTR b){
 	return a.FalseNode != b.FalseNode;
 }
 
+// The structure for Branch Tager Buffer
+struct BranchTagetBuffer{
+	map<string,pair<int,int> > btf;
+
+	pair<int,int> TakenNotTaken(string s){
+		map<string,pair<int,int> >::iterator it;
+		it = btf.find(s);
+		if(it == btf.end())
+			return pair<int,int>(0,0);
+
+		return btf[s];
+	}
+
+	void UpdateTakenNotTaken(string s , int PC , int tkn){
+		pair<int,int> a(PC,tkn);
+		btf[s] = a;	
+	}
+
+} BTF;
+
+// Used only when the Prediction type is 2
+int prediction_state = 0;
+int prediction_count = 0;
+
+// stage = 0 means IF , stage = 1 means EXEC
+pair<int,int> BrancPrediction(int type,string btype,int stage,int actual_taken,int PC=0){
+	if(type==1){
+		if(stage == 0){
+			return BTF.TakenNotTaken(btype);
+		}
+		else{
+			BTF.UpdateTakenNotTaken(btype,PC,actual_taken);
+		}
+	}
+	else if(type==2){
+		if(stage==0){
+			return pair<int,int>(0,prediction_state);
+		}
+		else{
+			if(actual_taken)
+				prediction_count++;
+			else
+				prediction_count--;
+
+			if(prediction_count>=3)
+			{
+				prediction_count = 3;
+				prediction_state = 1;
+			}
+			else if(prediction_count<=0){
+				prediction_count = 0;
+				prediction_state = 0;
+			}
+		}
+	}
+	else if(type==3){
+		if(stage==0){
+			pair<int,int> a(0,1);
+			return a;
+		}
+	}
+}
+
+// GLOBALS MODULES OF THE MACHINE
 vector<INSTR> FPAdder(ADDER_UNIT,FalseINSTR) , FPMultiplier(MULTIPLIER_UNIT,FalseINSTR) , IntegerUnit(CONSTANT_UNIT,FalseINSTR);
 int num_FPAdder = 0 , num_FPMultiplier = 0 , Num_IU = 0;
+
 
 
 int numlines , Curline = 0 ,Prevline = -1; 
@@ -231,6 +312,7 @@ int Cost(string S){
 	return 1;
 }
 
+// Create ROB's for the instructions
 void CreateROBs(){
 	//ins[Curline].Print();
 	int r_no = NUmFromReg(ins[Curline].RegDest);
@@ -284,6 +366,7 @@ void CreateROBs(){
 	numROB++;
 }
 
+// Process Other oerators
 double process(string s,float a , float b){
 	if(s=="FPADD" || s=="ADD"){
 		return a+b;
@@ -304,11 +387,11 @@ double process(string s,float a , float b){
 		return b;
 	}
 	else if(s=="LOAD"){
-		cout<<b<<" "<<MEMORY.load(b)<<endl;
 		return MEMORY.load(b);
 	}
 }
 
+//Process a branc
 bool ProcessBranch(string s,int b){
 	if(s=="BGT"){
 		return b>0;
@@ -331,9 +414,9 @@ bool ProcessBranch(string s,int b){
 }
 
 bool is_branch=false;
-
+// Main Function to process the Queue
 bool ProcessQueue(){
-	cout<<Curline<<" "<<Reg[7].val<<" , "<<Reg[1].val<<endl;	
+	//cout<<Curline<<" "<<Reg[7].val<<" , "<<Reg[1].val<<endl;	
 
 	for (int i = 0; i < ADDER_UNIT; ++i)
 	{
@@ -406,7 +489,7 @@ bool ProcessQueue(){
 				else if(IntegerUnit[i].ins=="STR"){
 					if(rob[IntegerUnit[i].r3].hasVal && rob[IntegerUnit[i].r2].hasVal){
 						MEMORY.save(rob[IntegerUnit[i].r3].val,rob[IntegerUnit[i].r2].val);
-						cout<<"Saved "<<rob[IntegerUnit[i].r2].val<<" at "<<rob[IntegerUnit[i].r3].val<<endl;
+						//cout<<"Saved "<<rob[IntegerUnit[i].r2].val<<" at "<<rob[IntegerUnit[i].r3].val<<endl;
 
 						IntegerUnit[i].cycleDone = 0;
 						IntegerUnit[i] = FalseINSTR;
@@ -422,7 +505,7 @@ bool ProcessQueue(){
 				}
 				else{
 					if(rob[IntegerUnit[i].r3].hasVal && rob[IntegerUnit[i].r2].hasVal){
-						cout<<rob[IntegerUnit[i].r2].val<< " * ";
+						//cout<<rob[IntegerUnit[i].r2].val<< " * ";
 						bool b = ProcessBranch(IntegerUnit[i].ins,rob[IntegerUnit[i].r2].val);
 						if(b){
 							Curline+=rob[IntegerUnit[i].r3].val;
@@ -438,7 +521,6 @@ bool ProcessQueue(){
 		}
 	}
 	if(is_branch){
-		cout<<"Yoyo\n";
 		return true;
 	}
 	/*
@@ -452,7 +534,6 @@ bool ProcessQueue(){
 	}*/
 	
 	if(Curline >= numlines){
-		cout<<"all hail lord\n";
 		bool test = false;
 		for (int i = 0; i < ADDER_UNIT; ++i)
 			if(FPAdder[i]!=FalseINSTR) {test = true; }
@@ -562,7 +643,7 @@ int main(int argc, char const *argv[])
 
 	ins.resize(numlines+2);
 
-	for(int i=0;inputStream>>ins[i].ins&&i<numlines;i++){
+	for(int i=0;i<numlines && inputStream>>ins[i].ins;i++){
 		if(ins[i].ins.size()>1 && ins[i].ins[0]=='-' && ins[i].ins[1]=='-'){
 			getline(inputStream,garbage);
 			i--;
@@ -573,6 +654,43 @@ int main(int argc, char const *argv[])
 		}
 	}
 	
+	int memsize=0;;
+	while(inputStream>>s){
+		if(s.size()>1 && s[0]=='-' && s[1]=='-'){
+			getline(inputStream,garbage);
+			continue;
+		}
+		stringstream ss;
+		ss<<s;
+		ss>>memsize;
+		break;
+	}
+	string s1;
+	for (int i = 0; i < memsize && inputStream>>s ; ++i)
+	{
+		if(s.size()>1 && s[0]=='-' && s[1]=='-'){
+			getline(inputStream,garbage);
+			--i;
+		}
+		else{
+			int mem;
+			float val;
+			inputStream>>s1;
+			s = s.substr(1);
+			s = s.substr(0,s.size()-1);
+
+			s1 = s1.substr(1);
+			s1 = s1.substr(0,s1.size()-1);
+
+			stringstream ss,ss1;
+			ss<<s;
+			ss>>mem;
+			ss1<<s1;
+			ss1>>val;
+			MEMORY.save(mem,val);
+		}
+	}
+
 	int numCycles = 0;
 	while(ProcessQueue()){
 		numCycles ++ ;
